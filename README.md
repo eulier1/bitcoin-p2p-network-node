@@ -22,7 +22,7 @@ If you don't have `uv` installed yet, run one of the following commands based on
 **macOS and Linux:**
 ```bash
 curl -LsSf [https://astral.sh/uv/install.sh](https://astral.sh/uv/install.sh) | sh
-
+```
 
 
 ## Module 1 Intro and Peer Discovery
