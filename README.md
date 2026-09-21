@@ -25,7 +25,7 @@ curl -LsSf [https://astral.sh/uv/install.sh](https://astral.sh/uv/install.sh) | 
 ```
 
 
-## Module 1 Intro and Peer Discovery
+## Module 1 - Intro and Peer Discovery
 
 ### Topics 
 1. Explain how a node connect to the network, with no prior knowledge of address participants.
@@ -36,6 +36,15 @@ curl -LsSf [https://astral.sh/uv/install.sh](https://astral.sh/uv/install.sh) | 
 
 1. Create a program querying dns seeds and list the address
 
+## Module 2 - Addrman 
+
+### Topics 
+1. Explain once a BTC node bootstrap for the 1st time collect all the other peers in the network
+2. What data structures are used to hold the list of available peers
+
+### Demo
+
+1. Store all the address of availables peers in the network, using the trustworthy DNS seeds hardcoded from BTC Core.
 
 
 ### Resources
