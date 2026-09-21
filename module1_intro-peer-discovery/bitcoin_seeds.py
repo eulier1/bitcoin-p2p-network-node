@@ -1,3 +1,4 @@
+import concurrent.futures
 import hashlib
 import ipaddress
 import os
@@ -141,6 +142,61 @@ def read_message(sock: socket.socket):
 
 
 # ---------------------------------------------------------------------------
+# version / verack
+# ---------------------------------------------------------------------------
+def build_version_payload(remote_ip: str, remote_port: int,
+                          start_height: int = 0, relay: bool = False) -> bytes:
+    """
+    version payload layout:
+      int32   version
+      uint64  services
+      int64   timestamp
+      net_addr addr_recv   (26)
+      net_addr addr_from   (26)
+      uint64  nonce
+      var_str user_agent
+      int32   start_height
+      bool    relay        (BIP 37, protocol >= 70001)
+    """
+    return (
+        struct.pack("<iQq", PROTOCOL_VERSION, 0, int(time.time()))
+        + encode_net_addr(remote_ip, remote_port)
+        + encode_net_addr("0.0.0.0", 0)
+        + os.urandom(8)
+        + encode_varstr(USER_AGENT)
+        + struct.pack("<i", start_height)
+        + struct.pack("<?", relay)
+    )
+
+
+def build_version_message(remote_ip: str, remote_port: int) -> bytes:
+    return pack_message("version", build_version_payload(remote_ip, remote_port))
+
+
+def build_verack_message() -> bytes:
+    """verack has an empty payload, so it is just a header."""
+    return pack_message("verack")
+
+
+def parse_version_payload(payload: bytes) -> dict:
+    if len(payload) < 85:  # fixed fields (80) + 1-byte empty var_str + height(4)
+        raise ProtocolError("version payload too short")
+    version, services, timestamp = struct.unpack_from("<iQq", payload, 0)
+    # skip addr_recv (26) + addr_from (26)
+    (nonce,) = struct.unpack_from("<Q", payload, 72)
+    user_agent, offset = decode_varstr(payload, 80)
+    (start_height,) = struct.unpack_from("<i", payload, offset)
+    return {
+        "version": version,
+        "services": services,
+        "timestamp": timestamp,
+        "nonce": nonce,
+        "user_agent": user_agent.decode("utf-8", errors="replace"),
+        "start_height": start_height,
+    }
+
+
+# ---------------------------------------------------------------------------
 # Discovery + probing
 # ---------------------------------------------------------------------------
 def query_dns_seed(seed_domain):
@@ -155,6 +211,39 @@ def query_dns_seed(seed_domain):
     except Exception as e:
         print(f"[!] An error occurred querying {seed_domain}: {e}")
     return node_ips
+
+
+def probe_node(ip, port=PORT):
+    """
+    Connect, send our `version`, and read what the node sends back.
+
+    We deliberately do NOT complete the handshake: we never send `verack`,
+    so the node will eventually drop us. Returns a dict describing the node
+    if it answered with a valid `version` message, otherwise None.
+    """
+    info = None
+    got_verack = False
+    try:
+        with socket.create_connection((ip, port), timeout=TIMEOUT) as sock:
+            sock.settimeout(TIMEOUT)
+            sock.sendall(build_version_message(ip, port))
+            for _ in range(MAX_MESSAGES):
+                command, payload = read_message(sock)
+                if command == "version":
+                    info = parse_version_payload(payload)
+                elif command == "verack":
+                    got_verack = True
+                # anything else (sendcmpct, ping, ...) is ignored
+                if info and got_verack:
+                    break
+    except (OSError, ProtocolError, struct.error, IndexError):
+        pass  # timeouts, resets, garbage: keep whatever we already parsed
+
+    if info is None:
+        return None
+    info["ip"] = ip
+    info["verack"] = got_verack
+    return info
 
 
 def save_to_file(nodes, filename):
@@ -185,8 +274,23 @@ def main():
     print("=========================================\n")
     print(f"Probing port {PORT} with version messages (no handshake)...")
 
+    verified = []
+    with concurrent.futures.ThreadPoolExecutor(max_workers=50) as executor:
+        for result in executor.map(probe_node, candidates):
+            if result:
+                print(f"[+] {result['ip']}  v{result['version']}  "
+                      f"height={result['start_height']}  {result['user_agent']}  "
+                      f"verack={result['verack']}")
+                verified.append(result)
+
     print("\n=========================================")
     print(f"Total candidates tested: {len(candidates)}")
+    print(f"Nodes that answered with a valid version: {len(verified)}")
+
+    if verified:
+        save_to_file(verified, OUTPUT_FILE)
+    else:
+        print("No verified nodes were found to persist.")
 
 
 if __name__ == "__main__":
