@@ -47,6 +47,37 @@ curl -LsSf [https://astral.sh/uv/install.sh](https://astral.sh/uv/install.sh) | 
 1. Store all the address of availables peers in the network, using the trustworthy DNS seeds hardcoded from BTC Core.
 
 
+## Module 3- [Message Structure](https://learnmeabitcoin.com/technical/general/compact-size/)
+
+### Topics 
+1. Message Structure - Verack/Version
+
+### Demo
+
+1. Define Verack/Version payload. The handshake Bitcoin core use to send/receive message from others peers
+
+
+## Module 4 - Connect to a peer
+
+### Topics 
+1. What is a Socket?
+2. TCP Socket
+3. TCP Handshake
+4. Bitcode P2P hanshake via Verack/Version message exchange
+
+### Demo
+
+1. Use TCP to connect with others peers via Verack/Version with others Bitcoin nodes
+
+## Module 5 - Incoming connections and addr relay
+
+### Topics 
+1. Receive/Send peer message connections
+
+### Demo
+
+1. Create a server to show message exchange on connections
+
 ### Resources
 
 DNS Spec root folder [RFC STD 13](https://www.rfc-editor.org/info/std13/)
@@ -56,3 +87,5 @@ Domain Names - Concepts and Facilites [RFC 1034](https://www.rfc-editor.org/info
 Domain Names - Implementation and Spec [RFC 1035](https://www.rfc-editor.org/info/rfc1035/)
 
 [Bitcoin Book - Bitcoin Network Section](https://github.com/bitcoinbook/bitcoinbook/blob/develop/ch10_network.adoc)
+
+[Message Structure](https://learnmeabitcoin.com/technical/general/compact-size/)
